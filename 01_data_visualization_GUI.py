@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import tkinter as tk
 from tkinter import ttk
+import sys # Added to ensure clean exit
 
 # PyTorch imports
 import torch
@@ -29,16 +30,13 @@ data = pd.DataFrame({
 # ==============================
 def train_model():
     """Trains the PyTorch model and returns data for plotting."""
-    # Convert data to tensors
     X = torch.tensor(data["Age"].values, dtype=torch.float32).view(-1, 1)
     y = torch.tensor(data["Income"].values, dtype=torch.float32).view(-1, 1)
 
-    # Linear Model
     model = nn.Linear(1, 1)
     criterion = nn.MSELoss()
     optimizer = optim.SGD(model.parameters(), lr=0.0001)
 
-    # Train loop
     epochs = 100
     for epoch in range(epochs):
         outputs = model(X)
@@ -47,7 +45,6 @@ def train_model():
         loss.backward()
         optimizer.step()
     
-    # Get predictions for plotting
     predicted = model(X).detach().numpy()
     return X.numpy(), y.numpy(), predicted
 
@@ -60,6 +57,11 @@ class DataDashboardApp(tk.Tk):
         self.title("AI & Data Visualization Dashboard")
         self.geometry("1000x700")
 
+        # ---------------------------------------------------------
+        # FIX: Handle the Close Button to stop the app completely
+        # ---------------------------------------------------------
+        self.protocol("WM_DELETE_WINDOW", self.on_closing)
+
         # Create Tab Control (Notebook)
         self.notebook = ttk.Notebook(self)
         self.notebook.pack(fill='both', expand=True)
@@ -71,17 +73,19 @@ class DataDashboardApp(tk.Tk):
         self.create_scatter_tab()
         self.create_pytorch_tab()
 
+    def on_closing(self):
+        """Clean up and close the application."""
+        plt.close('all') # Close all matplotlib figures to free memory
+        self.quit()      # Stop the mainloop
+        self.destroy()   # Destroy the window
+        sys.exit()       # Ensure the process terminates
+
     def embed_plot(self, fig, tab_name):
-        """Helper to embed a matplotlib figure into a new tab"""
-        # Create a new frame for the tab
         frame = ttk.Frame(self.notebook)
         self.notebook.add(frame, text=tab_name)
         
-        # Create the canvas that holds the figure
         canvas = FigureCanvasTkAgg(fig, master=frame)
         canvas.draw()
-        
-        # Pack the canvas into the frame
         canvas.get_tk_widget().pack(fill='both', expand=True)
 
     def create_histogram_tab(self):
@@ -118,7 +122,6 @@ class DataDashboardApp(tk.Tk):
         self.embed_plot(fig, "Scatter Plot")
 
     def create_pytorch_tab(self):
-        # Retrieve trained model data
         X, y, predicted = train_model()
         
         fig, ax = plt.subplots(figsize=(6, 4))
